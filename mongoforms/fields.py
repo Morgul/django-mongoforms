@@ -11,18 +11,19 @@ HIDE_ADD_JS_SCRIPT = """
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
 <script type="text/javascript">
 $(function(){
-    $(".field-item").append('<input type="button" class="field-item-delete" value="X">')
+    $("div.field-item:not(div.scripted):parent").addClass('scripted').append('<input type="button" class="field-item-delete" value="X">')
     $(".field-item-delete").click(function(){
         $(":input",$(this).parent()).val("");
         $(this).parent().hide();
     })
 
-    $('.field-item-new').before('<input type="button" class="field-item-add" value="add">').hide()
+    $("div.field-item-new:not(div.scripted-new):parent").addClass('scripted-new').before('<input type="button" class="field-item-add" value="add">').hide()
 
     $('.field-item-add').click(function(){
         $(this).next().show();
         $(this).hide();
     })
+
 })
 </script>
 """
@@ -71,7 +72,7 @@ class DictField(forms.Field):
         new_data.update(list_data)
         return new_data
 
-    def __init__(self, extra=1, *aargs, **kwaargs):
+    def __init__(self, extra=6, *aargs, **kwaargs):
         forms.Field.__init__(self, widget=DictWidget(extra=extra), *aargs, **kwaargs)
 
     def clean(self, value):
@@ -118,7 +119,7 @@ class ListField(forms.Field):
         new_data.update(list_data)
         return new_data
 
-    def __init__(self, inner_field, extra=1, *aargs, **kwaargs):
+    def __init__(self, inner_field, extra=6, *aargs, **kwaargs):
         self.__inner_field = MongoFormFieldGenerator().generate("somename", inner_field)
         forms.Field.__init__(self, widget=ListWidget(inner_widget=self.__inner_field.widget, extra=extra), *aargs, **kwaargs)
 

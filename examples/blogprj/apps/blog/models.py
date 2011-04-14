@@ -13,11 +13,11 @@ class BlogPost(Document):
     content = StringField(required=True)
     
     datetime_added = DateTimeField(default=datetime.datetime.now)
-
-    dict_field = DictField()
-    #liststring_field = ListField(StringField())
-    #listint_field = ListField(IntField())
-
+#
+#    dict_field = DictField()
+#    liststring_field = ListField(StringField())
+#    listint_field = ListField(IntField())
+    listlistint_field = ListField(ListField(IntField()))
     #
     # listreference_field = ListField(ReferenceField('self'))
     #reference_field = ReferenceField('self')
