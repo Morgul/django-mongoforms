@@ -13,7 +13,14 @@ class BlogPost(Document):
     content = StringField(required=True)
     
     datetime_added = DateTimeField(default=datetime.datetime.now)
-    
+
+    dict_field = DictField()
+    #liststring_field = ListField(StringField())
+    #listint_field = ListField(IntField())
+
+    #
+    # listreference_field = ListField(ReferenceField('self'))
+    #reference_field = ReferenceField('self')
     def save(self):
         if self.slug is None:
             slug = slugify(self.title)
@@ -41,3 +48,6 @@ class BlogPost(Document):
     meta = {
         'ordering': ['-datetime_added']
     }
+
+    def __unicode__(self):
+        return u"post %s" %self.title

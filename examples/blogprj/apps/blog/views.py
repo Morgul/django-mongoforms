@@ -31,8 +31,13 @@ def new(request, template_name='blog/new_or_edit.html'):
     if request.method == 'POST':
         form = BlogPostForm(request.POST)
         if form.is_valid():
-            form.save()
-        return HttpResponseRedirect("/")
+            m = form.save()
+            print m
+            print m.slug
+            return HttpResponseRedirect("/")
+        else:
+            pass
+            print "b;a!"
     else:
         form = BlogPostForm()
     
@@ -56,7 +61,8 @@ def edit(request, slug, template_name='blog/new_or_edit.html'):
         form = BlogPostForm(request.POST, instance=post)
         if form.is_valid():
             form.save()
-        return HttpResponseRedirect(post.get_absolute_url())
+            return HttpResponseRedirect(post.get_absolute_url())
+
     else:
         form = BlogPostForm(instance=post)
     

@@ -2,7 +2,8 @@ import types
 from django import forms
 from django.utils.datastructures import SortedDict
 from mongoengine.base import BaseDocument
-from fields import MongoFormFieldGenerator
+from fields import MongoFormFieldGenerator,  ListField
+from mongoforms.fields import DictField
 from utils import mongoengine_validate_wrapper, iter_valid_fields
 from mongoengine.fields import ReferenceField
 
@@ -57,6 +58,10 @@ class MongoForm(forms.BaseForm):
                  error_class=forms.util.ErrorList, label_suffix=':',
                  empty_permitted=False, instance=None):
         """ initialize the form"""
+        if data is not None:
+            data = ListField.prepare_form_data(data)
+            data = DictField.prepare_form_data(data)
+
 
         assert isinstance(instance, (types.NoneType, BaseDocument)), \
             'instance must be a mongoengine document, not %s' % \
