@@ -5,6 +5,15 @@ from django.core.urlresolvers import reverse
 
 from mongoengine import *
 
+class Tag(Document):
+    name = StringField()
+
+    def __unicode__(self):
+        if self.name is not None and len(self.name)>0:
+            return u"%s"%self.name
+        else:
+            return u"%s"%"Tag"
+
 class BlogPost(Document):
     published = BooleanField(default=False)
     author = StringField(required=True)
@@ -17,10 +26,10 @@ class BlogPost(Document):
 #    dict_field = DictField()
 #    liststring_field = ListField(StringField())
 #    listint_field = ListField(IntField())
-    listlistint_field = ListField(ListField(IntField()))
+    #listlistint_field = ListField(ListField(IntField()))
     #
     # listreference_field = ListField(ReferenceField('self'))
-    #reference_field = ReferenceField('self')
+    reference_field = ReferenceField(Tag)
     def save(self):
         if self.slug is None:
             slug = slugify(self.title)

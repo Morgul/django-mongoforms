@@ -4,7 +4,7 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.http import HttpResponseRedirect
 
-from models import BlogPost
+from models import BlogPost, Tag
 from forms import BlogPostForm
 
 def index(request, slug=None, template_name='blog/index.html'):
@@ -73,3 +73,9 @@ def edit(request, slug, template_name='blog/new_or_edit.html'):
         template_context,
         RequestContext(request)
     )
+
+def new_tag(request, tag_name):
+    t, created = Tag.objects.get_or_create(name=tag_name)
+    if created:
+        t.save()
+    return HttpResponseRedirect("/")

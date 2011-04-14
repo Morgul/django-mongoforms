@@ -13,4 +13,6 @@ urlpatterns = patterns('apps.blog.views',
     (r'^$', 'index'),
     (r'^new/$', 'new'),
     (r'^(?P<slug>[\w\-]+)/', include(entry_pattern)),
+    (r'^new_tag/(?P<tag_name>[\w\-]+)/$', 'new_tag'),
+
 )

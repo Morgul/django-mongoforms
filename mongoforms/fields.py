@@ -1,3 +1,4 @@
+from copy import copy
 from operator import itemgetter
 from django import forms
 from django.utils.encoding import smart_unicode
@@ -127,45 +128,44 @@ class ListField(forms.Field):
         print value
         return [self.__inner_field.clean(v) for v in value if (v is not None) and (len(v)>0)]
 
-
 class ReferenceField(forms.ChoiceField):
     """
     Reference field for mongo forms. Inspired by `django.forms.models.ModelChoiceField`.
     """
-    def __init__(self, queryset, *aargs, **kwaargs):
+    def __init__(self, document, *aargs, **kwaargs):
         forms.Field.__init__(self, *aargs, **kwaargs)
-        self.queryset = queryset
+        self.document = document
 
-    def _get_queryset(self):
-        return self._queryset
+    def _get_document(self):
+        return self._document
 
-    def _set_queryset(self, queryset):
-        self._queryset = queryset
+    def _set_document(self, document):
+        self._document = document
         self.widget.choices = self.choices
 
-    queryset = property(_get_queryset, _set_queryset)
+    document = property(_get_document, _set_document)
 
     def _get_choices(self):
-        if hasattr(self, '_choices'):
-            return self._choices
-
-        self._choices = [(obj.id, smart_unicode(obj)) for obj in self.queryset]
+        #if hasattr(self, '_choices'):
+        #    return self._choices
+        self._choices = [(obj.id, smart_unicode(obj)) for obj in self.document.objects.all()]
         return self._choices
 
     choices = property(_get_choices, forms.ChoiceField._set_choices)
 
     def clean(self, value):
         try:
-            print "val", value
             oid = ObjectId(value)
-            print oid
             oid = super(ReferenceField, self).clean(oid)
-            print oid
-            obj = self.queryset.get(id=oid)
-            print obj
-        except (TypeError, InvalidId, self.queryset._document.DoesNotExist):
+            obj = self.document.objects.get(id=oid)
+
+        except (TypeError, InvalidId, self.document.DoesNotExist):
             raise forms.ValidationError(self.error_messages['invalid_choice'] % {'value':value})
         return obj
+
+    def prepare_value(self, value):
+        self.choices = self.choices
+        return super(ReferenceField, self).prepare_value(value)
 
 class MongoFormFieldGenerator(object):
     """This class generates Django form-fields for mongoengine-fields."""
@@ -265,7 +265,7 @@ class MongoFormFieldGenerator(object):
         )
 
     def generate_referencefield(self, field_name, field):
-        return ReferenceField(field.document_type.objects)
+        return ReferenceField(field.document_type)
 
 
     def generate_listfield(self, field_name, field):

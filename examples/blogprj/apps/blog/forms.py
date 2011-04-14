@@ -8,7 +8,7 @@ class BlogPostForm(MongoForm):
     class Meta:
         document = BlogPost
         fields = ('author', 'title', 'content',
-                  #'reference_field',
+                  'reference_field',
                   "dict_field",
                   'published', 'liststring_field', 'listint_field',
                   'listlistint_field',
