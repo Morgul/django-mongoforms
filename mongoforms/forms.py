@@ -2,7 +2,7 @@ import types
 from django import forms
 from django.utils.datastructures import SortedDict
 from mongoengine.base import BaseDocument
-from fields import MongoFormFieldGenerator,  ListField
+from fields import MongoFormFieldGenerator
 from mongoforms.fields import DictField
 from utils import mongoengine_validate_wrapper, iter_valid_fields
 from mongoengine.fields import ReferenceField
@@ -38,8 +38,10 @@ class MongoFormMetaClass(type):
             for field_name, field in iter_valid_fields(attrs['Meta']):
                 # add field and override clean method to respect mongoengine-validator
                 doc_fields[field_name] = formfield_generator.generate(field_name, field)
-                doc_fields[field_name].clean = mongoengine_validate_wrapper(
-                    doc_fields[field_name].clean, field._validate)
+                if doc_fields[field_name] is not None:
+                        
+                    doc_fields[field_name].clean = mongoengine_validate_wrapper(
+                        doc_fields[field_name].clean, field._validate)
 
             # write the new document fields to base_fields
             doc_fields.update(attrs['base_fields'])
@@ -54,15 +56,10 @@ class MongoForm(forms.BaseForm):
     """Base MongoForm class. Used to create new MongoForms"""
     __metaclass__ = MongoFormMetaClass
 
-    def __init__(self, data=None, auto_id='id_%s', prefix=None, initial=None,
+    def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None, initial=None,
                  error_class=forms.util.ErrorList, label_suffix=':',
                  empty_permitted=False, instance=None):
         """ initialize the form"""
-        if data is not None:
-            data = ListField.prepare_form_data(data)
-            data = DictField.prepare_form_data(data)
-
-
         assert isinstance(instance, (types.NoneType, BaseDocument)), \
             'instance must be a mongoengine document, not %s' % \
                 type(instance).__name__
@@ -102,9 +99,15 @@ class MongoForm(forms.BaseForm):
 
         # walk through the document fields
         for field_name, field in iter_valid_fields(self._meta):
-            setattr(self.instance, field_name, self.cleaned_data.get(field_name))
+            if isinstance(self.fields[field_name], DictField):
+                self.fields[field_name].save_data_to_model(self.instance, field_name, self.cleaned_data.get(field_name))
+            else:
+                setattr(self.instance, field_name, self.cleaned_data.get(field_name))
 
         if commit:
-            self.instance.save()
+            try:
+                self.instance.save()
+            except AttributeError:
+                pass
 
         return self.instance

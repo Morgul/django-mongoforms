@@ -1,0 +1,15 @@
+
+<div id="div-{{ field_name }}-{{ field_uuid }}"></div>
+<script type="text/javascript">
+    {% autoescape off %}
+
+$('#div-{{ field_name }}-{{ field_uuid }}').mongoListField({
+    name: '{{ field_name }}',
+    choices: {{ choices }},
+    selected: {{ selected }}
+});
+
+
+    {% endautoescape %}
+
+</script>

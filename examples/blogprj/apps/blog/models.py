@@ -1,5 +1,3 @@
-import datetime
-
 from django.template.defaultfilters import slugify
 from django.core.urlresolvers import reverse
 
@@ -23,7 +21,7 @@ class BlogPost(Document):
     
     datetime_added = DateTimeField(default=datetime.datetime.now)
 #
-#    dict_field = DictField()
+    dict_field = DictField()
 #    liststring_field = ListField(StringField())
 #    listint_field = ListField(IntField())
     #listlistint_field = ListField(ListField(IntField()))

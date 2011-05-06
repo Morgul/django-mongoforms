@@ -32,12 +32,9 @@ def new(request, template_name='blog/new_or_edit.html'):
         form = BlogPostForm(request.POST)
         if form.is_valid():
             m = form.save()
-            print m
-            print m.slug
             return HttpResponseRedirect("/")
         else:
             pass
-            print "b;a!"
     else:
         form = BlogPostForm()
     

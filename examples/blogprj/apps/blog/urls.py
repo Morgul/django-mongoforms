@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from django.conf.urls.defaults import *
-from django.views.generic.simple import redirect_to, direct_to_template
 
 entry_pattern = patterns('apps.blog.views',
     (r'^$', 'show'),

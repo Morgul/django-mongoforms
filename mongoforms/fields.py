@@ -1,53 +1,32 @@
-from copy import copy
-from operator import itemgetter
+import uuid
 from django import forms
+from django.template.loader import render_to_string
 from django.utils.encoding import smart_unicode
 from pymongo.errors import InvalidId
 from pymongo.objectid import ObjectId
+import simplejson as json
+
 
 LISTFIELD_ITEM_LABEL = "listfield-items"
 DICTFIELD_ITEM_LABEL = "dictfield-item"
 DICTFIELD_ITEM_LABEL_VALUE_SUFFIX = "-value"
-HIDE_ADD_JS_SCRIPT = """
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
-<script type="text/javascript">
-$(function(){
-    $("div.field-item:not(div.scripted):parent").addClass('scripted').append('<input type="button" class="field-item-delete" value="X">')
-    $(".field-item-delete").click(function(){
-        $(":input",$(this).parent()).val("");
-        $(this).parent().hide();
-    })
-
-    $("div.field-item-new:not(div.scripted-new):parent").addClass('scripted-new').before('<input type="button" class="field-item-add" value="add">').hide()
-
-    $('.field-item-add').click(function(){
-        $(this).next().show();
-        $(this).hide();
-    })
-
-})
-</script>
-"""
-
-
-import re
-
-
 
 class DictWidget(forms.Widget):
 
-    def __init__(self, extra, *aargs, **kwaargs):
+    def __init__(self, show_all_fields=False, choices=None, keys={}, fields=[], *aargs, **kwaargs):
+        self.show_all_fields, self.fields, self.keys, self.choices = show_all_fields,fields, keys, choices
         forms.Widget.__init__(self, *aargs, **kwaargs)
-        self.__inner_widget = forms.TextInput()
-        self.extra = extra
 
     def render(self, name, value, attrs=None):
-        rend_key = lambda i,v: self.__inner_widget.render("%s-%s-%i"%(DICTFIELD_ITEM_LABEL, name,i), v, attrs)
-        rend_value = lambda i,v: self.__inner_widget.render("%s-%s-%i%s"%(DICTFIELD_ITEM_LABEL, name,i, DICTFIELD_ITEM_LABEL_VALUE_SUFFIX), v, attrs)
-
-        r = '<br>\n'.join(['<div class="field-item">'+rend_key(i,v[0])+rend_value(i,v[1])+'</div>' for i, v in enumerate(value.items())])
-        r += '<br>\n'+'<br>\n'.join(['<div class="field-item-new field-item">(new)'+rend_key(i,v[0])+rend_value(i,v[1])+'</div>' for i, v in enumerate([("","")]*self.extra,len(value.keys()))])
-        return r+HIDE_ADD_JS_SCRIPT
+        context = {}
+        context['field_name'] = name
+        context['field_uuid'] = uuid.uuid4()
+        context['keys'] = json.dumps(self.keys)
+        context['fields'] = json.dumps(self.fields)
+        context['items'] = value
+        context['choices'] = json.dumps(self.choices)
+        context['show_all_fields'] = json.dumps(self.show_all_fields)
+        return render_to_string('dict_mongofield.html', context)
 
 
 
@@ -56,77 +35,75 @@ class DictField(forms.Field):
     """
     Field for DictField.
     """
-    __r_pattern= re.compile( ur"^%s-(.+)-(\d+)$"%DICTFIELD_ITEM_LABEL, re.IGNORECASE)
-    @classmethod
-    def prepare_form_data(cls, data):
-        list_data = {}
-        for key, value in data.items():
-            m = cls.__r_pattern.match(key)
-            if m is not None:
-                try:
-                    list_data[m.groups()[0]]
-                except KeyError:
-                    list_data[m.groups()[0]]={}
-                list_data[m.groups()[0]][data[key]]=data[key+DICTFIELD_ITEM_LABEL_VALUE_SUFFIX]
-        print list_data
-        new_data = data.copy()
-        new_data.update(list_data)
-        return new_data
 
-    def __init__(self, extra=6, *aargs, **kwaargs):
-        forms.Field.__init__(self, widget=DictWidget(extra=extra), *aargs, **kwaargs)
+    def __init__(self, show_all_fields=False, choices=None,  keys={}, fields=[], widget=None, *aargs, **kwaargs):
+        if widget is None:
+            widget = DictWidget(show_all_fields=show_all_fields, choices=choices, keys=keys, fields=fields)
+        self.show_all_fields, self.keys, self.fields = show_all_fields, keys, fields
+        forms.Field.__init__(self, widget=widget, *aargs, **kwaargs)
+
+    def save_data_to_model(self, model_instance, field_name, value):
+        d = getattr(model_instance, field_name)
+        if len(self.fields)>0:
+            for key in value.keys():
+                if key not in self.fields:
+                    del value[key]
+        d.update(value)
 
     def clean(self, value):
-        for key in value.keys():
-            if key is None or len(key)==0:
-                del value[key]
+        value = json.loads(value)
         return value
 
 
-class ListWidget(forms.Widget):
+    def prepare_value(self, value):
+        if isinstance(value, str) or isinstance(value, unicode):
+            return value
+        if value is None:
+            return json.dumps({})
+        return json.dumps(value)
 
-    def __init__(self, inner_widget, extra, *aargs, **kwaargs):
-        forms.Widget.__init__(self, *aargs, **kwaargs)
-        self.__inner_widget = inner_widget
-        self.extra = extra
-        
+
+class ListWidget(forms.Widget):
+    def __init__(self, get_choices, *args, **kwargs):
+        self.get_choices = get_choices
+        forms.Widget.__init__(self, *args, **kwargs)
     def render(self, name, value, attrs=None):
-        rend = lambda i,v: self.__inner_widget.render("%s-%s-%i"%(LISTFIELD_ITEM_LABEL, name,i), v, attrs)
-        r = '<br>\n'.join(['<div class="field-item">'+rend(i,v)+'</div>' for i, v in enumerate(value)])
-        r += '<br>\n'+'<br>\n'.join(['<div class="field-item field-item-new">(new)'+rend(i,v)+'</div>' for i, v in enumerate([None]*self.extra,len(value))])
-        return r+HIDE_ADD_JS_SCRIPT
+        context = {}
+        context['selected'] = value
+        context['field_uuid'] = uuid.uuid4()
+        context['choices'] = json.dumps(dict(self.get_choices()))
+        context['field_name'] = name
+        return  render_to_string('list_mongofield.html', context)
 
 
 class ListField(forms.Field):
     """
     Field for ListField.
     """
-    __r_pattern = re.compile( ur"^%s-(.+)-(\d+)$"%LISTFIELD_ITEM_LABEL, re.IGNORECASE)
-    @classmethod
-    def prepare_form_data(cls, data):
-        list_data = {}
-        for key, value in data.items():
-            m = cls.__r_pattern.match(key)
-            if m is not None:
-                try:
-                    list_data[m.groups()[0]]
-                except KeyError:
-                    list_data[m.groups()[0]]=[]
-                list_data[m.groups()[0]].append([value, int(m.groups()[1])])
-        for key, value in list_data.items():
-            newvalue = [v for v,index in sorted(value, key=itemgetter(1))]
-            list_data[key] = newvalue
-        new_data = data.copy()
-        new_data.update(list_data)
-        return new_data
 
-    def __init__(self, inner_field, extra=6, *aargs, **kwaargs):
+    def __init__(self, inner_field, *aargs, **kwaargs):
         self.__inner_field = MongoFormFieldGenerator().generate("somename", inner_field)
-        forms.Field.__init__(self, widget=ListWidget(inner_widget=self.__inner_field.widget, extra=extra), *aargs, **kwaargs)
+        try:
+            get_choices = self.__inner_field._get_choices
+        except AttributeError:
+            get_choices =  lambda : []
+        forms.Field.__init__(self, widget=ListWidget(get_choices=get_choices), *aargs, **kwaargs)
 
+
+    def prepare_value(self, value):
+        if isinstance(value, str) or isinstance(value, unicode):
+            return value
+        try:
+            return json.dumps([self.__inner_field.prepare_value(v) for v in value])
+        except TypeError:
+            return json.dumps([])
     def clean(self, value):
-        print value
-        return [self.__inner_field.clean(v) for v in value if (v is not None) and (len(v)>0)]
+        value = json.loads(value)
+        if value is not None:
+            res = [self.__inner_field.clean(v) for v in value]
+            return res
+        else:
+            return []
 
 class ReferenceField(forms.ChoiceField):
     """
@@ -148,7 +125,8 @@ class ReferenceField(forms.ChoiceField):
     def _get_choices(self):
         #if hasattr(self, '_choices'):
         #    return self._choices
-        self._choices = [(obj.id, smart_unicode(obj)) for obj in self.document.objects.all()]
+        x = self.document.objects.all()
+        self._choices = [(smart_unicode(obj.id), smart_unicode(obj)) for obj in self.document.objects.all()]
         return self._choices
 
     choices = property(_get_choices, forms.ChoiceField._set_choices)
@@ -165,7 +143,11 @@ class ReferenceField(forms.ChoiceField):
 
     def prepare_value(self, value):
         self.choices = self.choices
-        return super(ReferenceField, self).prepare_value(value)
+        try:
+            val = str(value.pk)
+        except AttributeError:
+            val = str(value)
+        return super(ReferenceField, self).prepare_value(val)
 
 class MongoFormFieldGenerator(object):
     """This class generates Django form-fields for mongoengine-fields."""
@@ -273,4 +255,8 @@ class MongoFormFieldGenerator(object):
 
 
     def generate_dictfield(self, field_name, field):
+        return DictField(required=field.required, initial=field.default)
+
+    def generate_embeddeddocumentfield(self, field_name, field):
+        #fixme
         return DictField(required=field.required, initial=field.default)
