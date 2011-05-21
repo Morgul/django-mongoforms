@@ -6,10 +6,10 @@
  */
 //MongoListField
 (function($) {
-    function createListItem(id, title) {
+    function createListItem(id, title, click) {
         return $("<a href=\"#\" rel=\"" + id + "\">" + title + "</a>").button({
                     'icons': {'secondary':'ui-icon-minus'}
-                });
+                }).click(click);
     }
 
     function init(options) {
@@ -33,7 +33,7 @@
                 choices = $this.data('choices');
             }
             if (!selected) {
-                selected = $this.data('selected');
+                selected = $this.data('value');
             }
 
             var listItemGenerator = $this.data('listItemGenerator');
@@ -41,19 +41,20 @@
             $selectedItems.empty();
             var $item;
             var id;
-            for each (id in selected) {
+            $.each(selected, function(index, id) {
+                var title;
                 if (choices) {
-                    $item = listItemGenerator(id, choices[id]);
+                    title = choices[id];
                 }
                 else {
-                    $item = listItemGenerator(id, id);
+                    title = id;
                 }
-                $item.click(function() {
+                $item = listItemGenerator(id, title, function() {
                     $this.mongoListField('remove', $(this).attr('rel'));
                     return false;
                 });
                 $selectedItems.append($item);
-            }
+            });
             if ($selectedItems.length) {
                 $selectedItems.show();
             }
@@ -66,14 +67,14 @@
 
             var $input;
             var newItemVisible = false;
-            if (choices) {
+            if ( choices && !$.isEmptyObject(choices) ) {
                 $input = $("<select id='listfield-new-item-input'></select>");
-                for (id in choices) {
+                $.each(choices, function(id, choice) {
                     if (selected.indexOf(id) == -1) {
-                        $input.append("<option value=\"" + id + "\">" + choices[id] + "</option>");
+                        $input.append("<option value=\"" + id + "\">" + choice + "</option>");
                         newItemVisible = true;
                     }
-                }
+                });
                 if (newItemVisible) {
                     $newItem.append($input);
                 }
@@ -106,7 +107,7 @@
     function add(id) {
         return this.each(function() {
             var $this = $(this);
-            var selected = $this.data('selected');
+            var selected = $this.data('value');
             if (id && selected.indexOf(id) == -1) {
                 selected.push(id);
             }
@@ -117,7 +118,7 @@
     function remove(id) {
         return this.each(function() {
             var $this = $(this);
-            var selected = $this.data('selected');
+            var selected = $this.data('value');
             var index = selected.indexOf(id);
             if (index != -1) {
                 selected.splice(index, 1);
@@ -136,10 +137,10 @@
     var settings = {
         listItemGenerator: createListItem,
         choices: null,
-        selected: []
+        value: []
     };
 
-    $.fn.mongoListField = function( method ) {
+    $.fn.mongoListField = function(method) {
         // Method calling logic
         if (methods[method]) {
             return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
@@ -166,14 +167,14 @@
         var $input;
         if (choices) {
             $input = $('<select id="' + inputID + '"></select>');
-            for each (var choice in choices) {
+            $.each(choices, function(index, choice) {
                 var opt = '<option value="' + choice[0] + '"';
                 if (choice[0] == value) {
                     opt += ' selected';
                 }
                 opt += '>' + choice[1] + '</option>';
                 $input.append(opt);
-            }
+            });
         }
         else {
             $input = $('<input type="text" id="' + inputID + '" value="' + value + '">');
@@ -208,7 +209,7 @@
             }
 
             if (!items) {
-                items = $this.data('items');
+                items = $this.data('value');
             }
 
             var fields = $this.data('fields');
@@ -226,9 +227,9 @@
             var $items = $this.children('.dictfield-items');
             $items.empty();
             var title;
-            for each (field in current_fields) {
+            $.each(current_fields, function(index, field) {
                 if (showAllFields || (field in items)) {
-                    if (keys) {
+                    if (!$.isEmptyObject(keys)) {
                         title = keys[field];
                     }
                     else {
@@ -237,7 +238,7 @@
                     var $item = itemGenerator(field, title, items[field]);
                     $items.append($item);
                 }
-            }
+            });
             if ($items.length) {
                 $items.show();
                 $items.find('input').change(function() {
@@ -266,13 +267,13 @@
             if (!showAllFields) {
                 if (fields.length) {
                     var $key_input = $('<select id="dictfield-new-item-key"></select>');
-                    for each (var id in fields) {
+                    $.each(fields, function(index, id) {
                         if (!(id in items)) {
-                            title = (keys) ? keys[id] : id;
+                            title = ($.isEmptyObject(keys)) ? id : keys[id];
                             $key_input.append("<option value=\"" + id + "\">" + title + "</option>");
                             newItemVisible = true;
                         }
-                    }
+                    });
                 }
                 else {
                     $key_input = $('<input type="text" id="dictfield-new-item-key">');
@@ -303,7 +304,7 @@
     function setAttr(key, value) {
         return this.each(function() {
             var $this = $(this);
-            var items = $this.data('items');
+            var items = $this.data('value');
             if (key) {
                 items[key] = value;
             }
@@ -314,7 +315,7 @@
     function remove(key) {
         return this.each(function() {
             var $this = $(this);
-            var items = $this.data('items');
+            var items = $this.data('value');
             delete items[key];
             $this.mongoDictField('update');
         });
@@ -329,7 +330,7 @@
 
     var settings = {
         itemGenerator: createItem,
-        items: {},
+        value: {},
         fields: null,
         keys: null,
         choices: null,

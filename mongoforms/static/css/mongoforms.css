@@ -7,11 +7,10 @@
     margin: 0.2em;
 }
 
-
-.listfield-selected-items span, .listfield-new-item span,
-.dictfield-items span, .dictfield-new-item span {
-    font-size: 0.6em;
+.listfield-selected-items > a {
+    margin: 0.1em;
 }
+
 
 .listfield-new-item, .dictfield-new-item {
     margin: 0.2em;
@@ -19,7 +18,6 @@
 
 .listfield-new-item select, .listfield-new-item input,
 .dictfield-items input {
-    font-size: 1em;
     position: relative;
     top: 0.1em;
     margin: 0 0.3em 0 0;
@@ -27,7 +25,6 @@
 }
 
 .dictfield-new-item input, .dictfield-new-item select {
-    font-size: 1em;
     position: relative;
     top: 0.1em;
     margin: 0 0.3em 0 0;

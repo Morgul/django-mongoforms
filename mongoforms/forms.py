@@ -1,3 +1,5 @@
+import pprint
+from random import shuffle
 import types
 from django import forms
 from django.utils.datastructures import SortedDict
@@ -13,6 +15,7 @@ class MongoFormMetaClass(type):
     """Metaclass to create a new MongoForm."""
 
     def __new__(cls, name, bases, attrs):
+
         # get all valid existing Fields and sort them
         fields = [(field_name, attrs.pop(field_name)) for field_name, obj in \
             attrs.items() if isinstance(obj, forms.Field)]
@@ -25,7 +28,10 @@ class MongoFormMetaClass(type):
 
         # add the fields as "our" base fields
         attrs['base_fields'] = SortedDict(fields)
-        
+
+
+
+
         # Meta class available?
         if 'Meta' in attrs and hasattr(attrs['Meta'], 'document') and \
            issubclass(attrs['Meta'].document, BaseDocument):
@@ -46,6 +52,20 @@ class MongoFormMetaClass(type):
             # write the new document fields to base_fields
             doc_fields.update(attrs['base_fields'])
             attrs['base_fields'] = doc_fields
+
+
+
+        # sorting with respect to Meta.fields (like django forms)
+        def get_indexes(x, y):
+            meta_field_list = getattr(attrs['Meta'], 'fields')
+            try:
+                return meta_field_list.index(x[0]), meta_field_list.index(y[0])
+            except ValueError:
+                return None, None
+        if 'Meta' in attrs and hasattr(attrs['Meta'], 'fields'):
+            flds = attrs['base_fields'].items()
+            flds.sort(lambda x, y: cmp(*get_indexes(x,y)))
+            attrs['base_fields']=SortedDict(flds)
 
         # maybe we need the Meta class later
         attrs['_meta'] = attrs.get('Meta', object())
@@ -99,10 +119,7 @@ class MongoForm(forms.BaseForm):
 
         # walk through the document fields
         for field_name, field in iter_valid_fields(self._meta):
-            if isinstance(self.fields[field_name], DictField):
-                self.fields[field_name].save_data_to_model(self.instance, field_name, self.cleaned_data.get(field_name))
-            else:
-                setattr(self.instance, field_name, self.cleaned_data.get(field_name))
+            setattr(self.instance, field_name, self.cleaned_data.get(field_name))
 
         if commit:
             try:

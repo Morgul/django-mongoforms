@@ -23,9 +23,14 @@ def iter_valid_fields(meta):
     # fetch field configuration and always add the id_field as exclude
     meta_fields = getattr(meta, 'fields', ())
     meta_exclude = getattr(meta, 'exclude', ()) + (meta.document._meta.get('id_field'),)
-    # walk through the document fields
-    for field_name, field in meta.document._fields.iteritems():
-        # skip excluded or not explicit included fields
-        if (meta_fields and field_name not in meta_fields) or field_name in meta_exclude:
-            continue
-        yield (field_name, field)
+    document_fields = meta.document._fields
+    # walk through the meta fields
+    if meta_fields:
+        for field_name in meta_fields:
+            if field_name in document_fields:
+                print field_name
+                yield field_name, document_fields[field_name]
+    else:
+        for field_name, field in document_fields.iteritems():
+            if not (field_name in meta_exclude):
+                yield field_name, field

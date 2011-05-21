@@ -2,6 +2,7 @@ import uuid
 from django import forms
 from django.template.loader import render_to_string
 from django.utils.encoding import smart_unicode
+from mongoengine.base import BaseField
 from pymongo.errors import InvalidId
 from pymongo.objectid import ObjectId
 import simplejson as json
@@ -11,22 +12,44 @@ LISTFIELD_ITEM_LABEL = "listfield-items"
 DICTFIELD_ITEM_LABEL = "dictfield-item"
 DICTFIELD_ITEM_LABEL_VALUE_SUFFIX = "-value"
 
-class DictWidget(forms.Widget):
 
+class JQueryPluginWidget(forms.Widget):
+    plugin_name = "notSuchjQueryPlugin"
+    def render(self, name, value, attrs=None):
+        context = {}
+        context["field_name"] = name
+        context["field_uuid"] = uuid.uuid4()
+        context["value"] = value
+
+        if attrs is None:
+            attrs = {}
+            attrs["init_dict"]={}
+        try:
+            attrs["init_dict"].update(self.attrs["init_dict"])
+        except KeyError:
+            pass
+        context["init_dict"] = attrs["init_dict"]
+        context["plugin_name"] = self.plugin_name
+
+        return render_to_string('jquery_plugin_widget.html', context)
+
+
+class DictWidget(JQueryPluginWidget):
+    plugin_name = "mongoDictField"
     def __init__(self, show_all_fields=False, choices=None, keys={}, fields=[], *aargs, **kwaargs):
         self.show_all_fields, self.fields, self.keys, self.choices = show_all_fields,fields, keys, choices
         forms.Widget.__init__(self, *aargs, **kwaargs)
 
     def render(self, name, value, attrs=None):
-        context = {}
-        context['field_name'] = name
-        context['field_uuid'] = uuid.uuid4()
-        context['keys'] = json.dumps(self.keys)
-        context['fields'] = json.dumps(self.fields)
-        context['items'] = value
-        context['choices'] = json.dumps(self.choices)
-        context['show_all_fields'] = json.dumps(self.show_all_fields)
-        return render_to_string('dict_mongofield.html', context)
+        if attrs is None:
+            attrs = {}
+        attrs["init_dict"]={
+                    'keys': json.dumps(self.keys),
+                    'fields': json.dumps(self.fields),
+                    'choices': json.dumps(self.choices),
+                    'show_all_fields': json.dumps(self.show_all_fields),}
+        return super(DictWidget, self).render(name, value, attrs)
+
 
 
 
@@ -42,13 +65,6 @@ class DictField(forms.Field):
         self.show_all_fields, self.keys, self.fields = show_all_fields, keys, fields
         forms.Field.__init__(self, widget=widget, *aargs, **kwaargs)
 
-    def save_data_to_model(self, model_instance, field_name, value):
-        d = getattr(model_instance, field_name)
-        if len(self.fields)>0:
-            for key in value.keys():
-                if key not in self.fields:
-                    del value[key]
-        d.update(value)
 
     def clean(self, value):
         value = json.loads(value)
@@ -63,17 +79,17 @@ class DictField(forms.Field):
         return json.dumps(value)
 
 
-class ListWidget(forms.Widget):
-    def __init__(self, get_choices, *args, **kwargs):
+class ListWidget(JQueryPluginWidget):
+    plugin_name = "mongoListField"
+    def __init__(self, get_choices=None, *args, **kwargs):
         self.get_choices = get_choices
-        forms.Widget.__init__(self, *args, **kwargs)
+        super(ListWidget, self).__init__(*args, **kwargs)
     def render(self, name, value, attrs=None):
-        context = {}
-        context['selected'] = value
-        context['field_uuid'] = uuid.uuid4()
-        context['choices'] = json.dumps(dict(self.get_choices()))
-        context['field_name'] = name
-        return  render_to_string('list_mongofield.html', context)
+
+        if attrs is None:
+            attrs = {}
+        attrs["init_dict"]={'choices': json.dumps(dict(self.get_choices()))}
+        return super(ListWidget, self).render(name, value, attrs)
 
 
 class ListField(forms.Field):
@@ -81,13 +97,21 @@ class ListField(forms.Field):
     Field for ListField.
     """
 
-    def __init__(self, inner_field, *aargs, **kwaargs):
-        self.__inner_field = MongoFormFieldGenerator().generate("somename", inner_field)
+    def __init__(self, inner_field, widget=None, *aargs, **kwaargs):
+        if isinstance(inner_field, (forms.Field)):
+            self.__inner_field = inner_field
+        elif isinstance(inner_field, BaseField):
+            self.__inner_field = MongoFormFieldGenerator().generate("somename", inner_field)
         try:
             get_choices = self.__inner_field._get_choices
         except AttributeError:
             get_choices =  lambda : []
-        forms.Field.__init__(self, widget=ListWidget(get_choices=get_choices), *aargs, **kwaargs)
+        if widget is None:
+            widget = ListWidget(get_choices=get_choices)
+        else:
+            widget.get_choices = get_choices
+
+        forms.Field.__init__(self, widget=widget, *aargs, **kwaargs)
 
 
     def prepare_value(self, value):
@@ -133,10 +157,9 @@ class ReferenceField(forms.ChoiceField):
 
     def clean(self, value):
         try:
-            oid = ObjectId(value)
-            oid = super(ReferenceField, self).clean(oid)
-            obj = self.document.objects.get(id=oid)
-
+            #oid = ObjectId(value)
+            oid = super(ReferenceField, self).clean(value)
+            obj = self.document.objects.get(pk=oid)
         except (TypeError, InvalidId, self.document.DoesNotExist):
             raise forms.ValidationError(self.error_messages['invalid_choice'] % {'value':value})
         return obj

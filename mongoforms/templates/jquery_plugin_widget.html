@@ -1,0 +1,19 @@
+{#<script type="text/javascript" src="/static/js/mongofields.js"> </script>#}
+
+<div id="div-{{ field_name }}-{{ field_uuid }}"></div>
+<script type="text/javascript">
+    {% autoescape off %}
+$(document).ready(function (){
+    $('#div-{{ field_name }}-{{ field_uuid }}').{{ plugin_name }}({
+        name: '{{ field_name }}',
+        {% for key, value in init_dict.items %}
+        {{ key }}: {{ value }},
+        {% endfor %}
+        value: {{ value }}
+    })});
+
+
+
+    {% endautoescape %}
+
+</script>
