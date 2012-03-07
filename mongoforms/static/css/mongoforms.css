@@ -1,0 +1,32 @@
+.listfield, .dictfield {
+    width: 300px;
+    margin: 0.5em 0;
+}
+
+.listfield-selected-items, .dictfield-items {
+    margin: 0.2em;
+}
+
+.listfield-selected-items > a {
+    margin: 0.1em;
+}
+
+
+.listfield-new-item, .dictfield-new-item {
+    margin: 0.2em;
+}
+
+.listfield-new-item select, .listfield-new-item input,
+.dictfield-items input {
+    position: relative;
+    top: 0.1em;
+    margin: 0 0.3em 0 0;
+    width: 200px;
+}
+
+.dictfield-new-item input, .dictfield-new-item select {
+    position: relative;
+    top: 0.1em;
+    margin: 0 0.3em 0 0;
+    width: 100px;
+}

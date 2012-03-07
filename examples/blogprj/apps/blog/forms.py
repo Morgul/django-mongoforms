@@ -7,5 +7,11 @@ from models import BlogPost
 class BlogPostForm(MongoForm):
     class Meta:
         document = BlogPost
-        fields = ('author', 'title', 'content', 'published')
+        fields = ('author', 'title', 'content',
+                  'reference_field',
+                  "dict_field",
+                  'published', 'liststring_field', 'listint_field',
+                  'listlistint_field',
+        #          'listreference_field'
+        )
     content = forms.CharField(widget=forms.Textarea)

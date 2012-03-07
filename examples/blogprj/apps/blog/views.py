@@ -4,7 +4,7 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.http import HttpResponseRedirect
 
-from models import BlogPost
+from models import BlogPost, Tag
 from forms import BlogPostForm
 
 def index(request, slug=None, template_name='blog/index.html'):
@@ -31,8 +31,10 @@ def new(request, template_name='blog/new_or_edit.html'):
     if request.method == 'POST':
         form = BlogPostForm(request.POST)
         if form.is_valid():
-            form.save()
-        return HttpResponseRedirect("/")
+            m = form.save()
+            return HttpResponseRedirect("/")
+        else:
+            pass
     else:
         form = BlogPostForm()
     
@@ -56,7 +58,8 @@ def edit(request, slug, template_name='blog/new_or_edit.html'):
         form = BlogPostForm(request.POST, instance=post)
         if form.is_valid():
             form.save()
-        return HttpResponseRedirect(post.get_absolute_url())
+            return HttpResponseRedirect(post.get_absolute_url())
+
     else:
         form = BlogPostForm(instance=post)
     
@@ -67,3 +70,9 @@ def edit(request, slug, template_name='blog/new_or_edit.html'):
         template_context,
         RequestContext(request)
     )
+
+def new_tag(request, tag_name):
+    t, created = Tag.objects.get_or_create(name=tag_name)
+    if created:
+        t.save()
+    return HttpResponseRedirect("/")

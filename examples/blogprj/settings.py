@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import platform
 import sys
 import os
 
